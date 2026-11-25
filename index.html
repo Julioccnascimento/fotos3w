@@ -1,0 +1,242 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"><title>3W · Fotos de campo</title><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#13294b"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes">
+<style>
+:root{--navy:#13294b;--orange:#e8731a;--bg:#f3f5f9;--line:#d4dae3;--ok:#1f6b42;--bad:#b02a2a;--muted:#5b6780}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:#14213a}
+header{background:var(--navy);color:#fff;padding:14px 16px}header b{font-size:18px}header span{display:block;font-size:13px;opacity:.8}
+main{padding:14px 16px 90px;max-width:640px;margin:0 auto}
+label.f{display:block;font-weight:700;font-size:14px;margin:14px 0 6px}
+select,input[type=text],textarea{width:100%;font-family:inherit;font-size:16px;padding:11px;border:1px solid var(--line);border-radius:10px;background:#fff;color:#14213a}
+.gpsbar{margin-top:12px;padding:10px 12px;border-radius:10px;font-size:14px;background:#fff;border:1px solid var(--line)}
+.gpsbar.ok{border-color:var(--ok);color:var(--ok)}.gpsbar.bad{border-color:var(--bad);color:var(--bad)}
+.slots{display:grid;grid-template-columns:1fr;gap:10px;margin-top:8px}
+.slot{background:#fff;border:1px dashed var(--line);border-radius:12px;padding:10px;display:flex;gap:10px;align-items:center}
+.slot.ok{border:1px solid var(--ok)}
+.slot .t{flex:1;font-size:14px;min-width:0}.slot .t b{display:block;font-size:15px}.slot .t small{color:var(--muted)}
+.slot img{width:64px;height:64px;object-fit:cover;border-radius:8px;background:#eee}
+.slot .bts{display:flex;flex-direction:column;gap:6px;align-items:stretch}
+.slot .btn{background:var(--orange);color:#fff;border-radius:999px;padding:9px 14px;font-weight:700;font-size:14px;white-space:nowrap;text-align:center}
+.slot .gal{color:var(--muted);font-size:12px;text-align:center;text-decoration:underline}
+.slot input{display:none}
+.note{color:var(--muted);font-size:13px}
+.lk{background:none;border:0;padding:6px 0;color:var(--navy);font-size:14px;text-decoration:underline}
+.nova{background:#fff;border:1px solid var(--orange);border-radius:12px;padding:4px 12px 12px;margin-top:10px}
+.nova .row{display:flex;gap:8px}.nova .row>*{flex:1}
+#enviar{position:fixed;left:0;right:0;bottom:0;margin:0;border:0;padding:16px;font-size:17px;font-weight:800;background:var(--navy);color:#fff}
+#enviar:disabled{background:#8794aa}
+.msg{padding:12px;border-radius:10px;margin-top:12px;font-size:15px}.msg.ok{background:#e3f3ea;color:var(--ok)}.msg.bad{background:#f8e3e3;color:var(--bad)}
+.done{text-align:center;padding:36px 10px}.done b{font-size:22px;color:var(--ok);display:block;margin-bottom:8px}
+.done .big{display:block;width:100%;margin-top:14px;padding:14px 18px;border-radius:999px;border:0;background:var(--orange);color:#fff;font-weight:700;font-size:16px}
+.done .sec{background:#fff;color:var(--navy);border:1px solid var(--navy)}
+.done ul{text-align:left;font-size:14px;color:var(--muted);padding-left:20px}
+.fila{margin:10px 16px 0;padding:10px 12px;border-radius:10px;font-size:14px;background:#fff3e6;border:1px solid var(--orange);color:#7a3d06;max-width:640px}.fila button{margin-left:8px;border:0;background:var(--orange);color:#fff;border-radius:999px;padding:5px 12px;font-weight:700}.fila.ok{background:#e3f3ea;border-color:var(--ok);color:var(--ok)}
+#ver{position:fixed;inset:0;background:rgba(0,0,0,.9);display:none;align-items:center;justify-content:center;z-index:9}#ver img{max-width:100%;max-height:100%}
+</style></head><body>
+<header><b>3W · Fotos de campo</b><span>Envie as fotos da caixa direto para o escritório · funciona sem sinal</span></header>
+<div id="filaBar" class="fila" hidden></div>
+<main id="app">
+<div id="form">
+<label class="f">Seu nome ou equipe</label><input type="text" id="tec" placeholder="Ex.: Renato · LF1">
+<label class="f">Cidade</label><select id="cid"><option value="">Escolha a cidade…</option></select>
+<p class="note" id="cidAuto"></p>
+<div id="obraBox" hidden><label class="f">Projeto</label><select id="obra"></select></div>
+<label class="f">Caixa</label><select id="cx" disabled><option value="">Escolha a cidade primeiro</option></select>
+<button type="button" class="lk" id="verEnv" hidden></button>
+<div id="novaBox" class="nova" hidden>
+ <label class="f">Caixa nova (rompimento ou caixa fora do projeto)</label>
+ <div class="row"><select id="novaTipo"><option value="CEO">CEO</option><option value="CTO">CTO</option><option value="RESERVA">RESERVA</option></select>
+ <input type="text" id="novaNome" placeholder="Nome, ex.: CEO-TVA0001-3.0" autocapitalize="characters"></div>
+ <p class="note">Use o nome escrito na etiqueta da caixa. Diga o motivo na observação (ex.: rompimento entre os postes X e Y).</p>
+</div>
+<div id="gpsbar" class="gpsbar">📍 Procurando GPS…</div>
+<p class="note" id="cxInfo"></p>
+<div id="slots" class="slots"></div>
+<label class="f">Observação (opcional)</label><textarea id="obs" rows="2" placeholder="Algo que o escritório precisa saber"></textarea>
+<div id="msg"></div>
+</div>
+<div id="done" hidden></div>
+</main>
+<div id="ver" onclick="this.style.display='none'"><img id="verImg"></div>
+<button id="enviar" disabled>Enviar fotos</button>
+<script>
+var API='https://script.google.com/macros/s/AKfycbxRCxFTmc6rzmc0DGRPiAogQIn2X6CK-n7jcvZfp6Hs9Jxqw9S_i6P0B2krUrbEfys65Q/exec';
+var D=(function(){try{return JSON.parse(localStorage.getItem('dados3w')||'null')}catch(e){return null}})();
+var SEM_DADOS=!D;if(!D)D={obras:[],enviadas:{}};
+var ROT={CTO:["Tubos loose (armazenamento interno)","Fibras (armazenamento interno)","Identificação interna da CTO","Identificação externa da CTO","Reserva técnica (armazenamento externo)","Caixa fixada no poste","BAPs · lado esquerdo","BAPs · lado direito","Poste completo"],CEO:["Tubos loose (armazenamento interno)","Bandeja (armazenamento interno das fibras)","Identificação interna da CEO","Fechamento da caixa","Caixa instalada","Poste completo"],RESERVA:["Foto da reserva","Reserva com ponto de referência"]};
+var NOVA='__nova';
+var $=function(i){return document.getElementById(i)},fotos={},gps=null,pos=null,end={txt:'',lat:null,lon:null,busca:null,cidade:'',uf:''},cidManual=false,ultOp=null,mostrarEnv=false,restaurando=false;
+function norm(t){return String(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim()}
+function ao(t){return String(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[\\\/:*?"<>|]+/g,'-').trim().replace(/\s+/g,'_')}
+
+/* ---------- Caixas já enviadas (servidor + este celular) ---------- */
+var ENV={};function lerEnvLocal(){try{return JSON.parse(localStorage.getItem('env3w')||'{}')}catch(e){return{}}}
+function juntarEnv(m){Object.keys(m||{}).forEach(function(k){ENV[k]=m[k]})}
+juntarEnv(D.enviadas);juntarEnv(lerEnvLocal());
+function marcarEnvLocal(id,envioId){var m=lerEnvLocal();m[id]={envioId:envioId,em:new Date().toISOString()};try{localStorage.setItem('env3w',JSON.stringify(m))}catch(e){}ENV[id]=m[id]}
+function jaEnviada(c){return !!(c.enviada||ENV[c.id])}
+function pendentes(o){return o.caixas.filter(function(c){return !jaEnviada(c)})}
+
+/* ---------- Rascunho salvo no celular (não perde as fotos ao minimizar) ---------- */
+var _db=null;
+function idb(){if(_db)return Promise.resolve(_db);return new Promise(function(ok,no){try{var r=indexedDB.open('fotos3w',1);r.onupgradeneeded=function(){r.result.createObjectStore('kv')};r.onsuccess=function(){_db=r.result;ok(_db)};r.onerror=function(){no(r.error)}}catch(e){no(e)}})}
+function kvSet(k,v){return idb().then(function(db){return new Promise(function(ok){var t=db.transaction('kv','readwrite');t.objectStore('kv').put(v,k);t.oncomplete=function(){ok(true)};t.onerror=function(){ok(false)}})}).catch(function(){return false})}
+function kvGet(k){return idb().then(function(db){return new Promise(function(ok){var q=db.transaction('kv').objectStore('kv').get(k);q.onsuccess=function(){ok(q.result||null)};q.onerror=function(){ok(null)}})}).catch(function(){return null})}
+try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
+var _tSalvar=null;
+function salvar(ja){clearTimeout(_tSalvar);var f=function(){if(restaurando)return;var fs={};Object.keys(fotos).forEach(function(i){var x=fotos[i];fs[i]={b64:x.b64,nome:x.nome,origem:x.origem,geo:x.geo,em:x.em,end:x.end}});
+kvSet('rascunho',{v:1,salvoEm:Date.now(),tec:$('tec').value,cid:$('cid').value,obra:$('obra').value,cx:$('cx').value,novaTipo:$('novaTipo').value,novaNome:$('novaNome').value,obs:$('obs').value,fotos:fs})};if(ja)f();else _tSalvar=setTimeout(f,400)}
+function limparRascunho(){var tec=$('tec').value,cid=$('cid').value,obra=$('obra').value;return kvSet('rascunho',{v:1,salvoEm:Date.now(),tec:tec,cid:cid,obra:obra,cx:'',novaTipo:'CEO',novaNome:'',obs:'',fotos:{}})}
+document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')salvar(true)});
+window.addEventListener('pagehide',function(){salvar(true)});
+
+try{$('tec').value=localStorage.getItem('tec3w')||''}catch(e){}
+var obras=(D.obras||[]),cids={};obras.forEach(function(o){(cids[o.cidade+' - '+o.uf]=cids[o.cidade+' - '+o.uf]||[]).push(o)});
+function montarCidades(){var sel=$('cid').value;$('cid').innerHTML='<option value="">Escolha a cidade…</option>';Object.keys(cids).sort().forEach(function(c){var falta=cids[c].reduce(function(s,o){return s+pendentes(o).length},0);var op=document.createElement('option');op.value=c;op.textContent=c+(falta?'':' ✓ tudo enviado');$('cid').appendChild(op)});$('cid').value=sel}
+montarCidades();
+function obraAtual(){var l=cids[$('cid').value]||[];return l.length===1?l[0]:l.find(function(o){return o.id===$('obra').value})}
+$('cid').onchange=function(ev){if(ev&&ev.isTrusted){cidManual=true;if(Object.keys(fotos).length&&!confirm('Trocar de cidade apaga as fotos já tiradas desta caixa. Continuar?')){this.value=this.dataset.ant||'';return}}this.dataset.ant=this.value;var l=cids[this.value]||[];$('obraBox').hidden=l.length<2;$('obra').innerHTML=l.map(function(o){var f=pendentes(o).length;return'<option value="'+o.id+'">'+o.codigo+(f?' · falta'+(f>1?'m ':' ')+f:' ✓')+'</option>'}).join('');montarCx();salvar()};
+$('obra').onchange=function(){montarCx();salvar()};
+function montarCx(){var o=obraAtual();fotos={};if(!o){$('cx').disabled=true;$('cx').innerHTML='<option value="">Escolha a cidade primeiro</option>';$('verEnv').hidden=true;render();return}
+$('cx').disabled=false;opcoesCx();render()}
+function dCx(c){return pos&&c.c?dist(pos.lat,pos.lon,c.c[1],c.c[0]):null}
+function mt(d){return d<1000?Math.round(d)+' m':(d/1000).toFixed(1).replace('.',',')+' km'}
+function opcoesCx(){var o=obraAtual();if(!o)return;var sel=$('cx').value;
+var ix=o.caixas.map(function(c,i){return{c:c,i:i,d:dCx(c),env:jaEnviada(c)}});
+var pend=ix.filter(function(x){return !x.env}),env=ix.filter(function(x){return x.env});
+if(pos)pend.sort(function(a,b){return(a.d==null?1e12:a.d)-(b.d==null?1e12:b.d)});
+var h='<option value="">'+(pend.length?'Escolha a caixa…':'Todas as caixas desta obra já foram enviadas')+'</option>';
+h+=pend.map(function(x,k){return'<option value="'+x.c.id+'">'+x.c.nome+(x.d!=null?' · '+mt(x.d):'')+(k===0&&x.d!=null&&x.d<300?' ← mais perto':'')+'</option>'}).join('');
+h+='<option value="'+NOVA+'">➕ Cadastrar caixa nova (rompimento)</option>';
+if(mostrarEnv&&env.length)h+='<optgroup label="Já enviadas — só se o escritório pedir">'+env.map(function(x){return'<option value="'+x.c.id+'">'+x.c.nome+' (reenviar)</option>'}).join('')+'</optgroup>';
+$('cx').innerHTML=h;$('cx').value=sel;if($('cx').value!==sel)$('cx').value='';
+$('verEnv').hidden=!env.length;$('verEnv').textContent=mostrarEnv?'Esconder caixas já enviadas':'Mostrar caixas já enviadas ('+env.length+')'}
+$('verEnv').onclick=function(){mostrarEnv=!mostrarEnv;opcoesCx()};
+function autoCidade(){if(restaurando||cidManual||!pos||$('cx').value!==''||Object.keys(fotos).length)return;var alvo=null,obraId=null,melhor=1e12;
+obras.forEach(function(o){pendentes(o).forEach(function(c){var d=dCx(c);if(d!=null&&d<melhor){melhor=d;alvo=o.cidade+' - '+o.uf;obraId=o.id}})});
+var via='pela posição das caixas';if(!alvo||melhor>15000){alvo=null;obraId=null;if(end.cidade){var k=Object.keys(cids).find(function(k){var o=cids[k][0];return norm(o.cidade)===norm(end.cidade)&&(!end.uf||o.uf===end.uf)});if(k){alvo=k;via='pelo endereço do GPS'}}}
+if(!alvo){$('cidAuto').textContent=end.cidade?'📍 Você está em '+end.cidade+(end.uf?' - '+end.uf:'')+', que não tem obra aberta no app. Escolha a cidade manualmente.':'';return}
+var mudou=$('cid').value!==alvo;if(mudou){$('cid').value=alvo;$('cid').onchange()}if(obraId&&(cids[alvo]||[]).length>1&&$('obra').value!==obraId){$('obra').value=obraId;montarCx()}
+$('cidAuto').textContent='📍 Cidade escolhida '+via+': '+alvo+'. Se estiver errado, troque acima.'}
+$('cx').onchange=function(ev){if(ev&&ev.isTrusted&&Object.keys(fotos).length&&!confirm('Trocar de caixa apaga as fotos já tiradas. Continuar?')){this.value=this.dataset.ant||'';return}this.dataset.ant=this.value;fotos={};render();salvar()};
+$('novaTipo').onchange=function(){if(Object.keys(fotos).length&&!confirm('Trocar o tipo apaga as fotos já tiradas. Continuar?')){this.value=this.dataset.ant||'CEO';return}this.dataset.ant=this.value;fotos={};render();salvar()};
+$('novaNome').oninput=function(){render();salvar()};
+$('tec').oninput=function(){salvar()};$('obs').oninput=function(){salvar()};
+function cxAtual(){var o=obraAtual();if(!o||$('cx').value==='')return null;
+if($('cx').value===NOVA){var nome=$('novaNome').value.trim().toUpperCase().replace(/\s+/g,' ');var tp=$('novaTipo').value;return{id:o.id+'__NOVA-'+ao(nome||'SEM_NOME'),nome:nome,tipo:tp,novo:true}}
+return o.caixas.find(function(c){return c.id===$('cx').value})||null}
+function erroNova(c){if(!c||!c.novo)return'';if(c.nome.length<4)return'Escreva o nome da caixa nova.';var o=obraAtual();if(o.caixas.some(function(x){return norm(x.nome)===norm(c.nome)}))return'Essa caixa já está na lista. Escolha ela em vez de cadastrar.';return''}
+function render(){var c=cxAtual();$('novaBox').hidden=$('cx').value!==NOVA;$('slots').innerHTML='';$('cxInfo').textContent=c?(c.tipo==='RESERVA'?'Reserva: 2 fotos.':c.tipo+': '+ROT[c.tipo].length+' fotos, na ordem abaixo. Tire pela câmera do app: a foto sai com data, hora, coordenadas e endereço.'):'';
+if(c)ROT[c.tipo].forEach(function(r,i){var d=document.createElement('div');d.className='slot'+(fotos[i]?' ok':'');
+d.innerHTML=(fotos[i]?'<img src="'+fotos[i].prev+'">':'')+'<div class="t"><b>Foto '+(i+1)+'</b><small>'+r+'</small></div><div class="bts"><label class="btn">'+(fotos[i]?'Tirar de novo':'📷 Tirar foto')+'<input type="file" accept="image/*" capture="environment" data-o="camera"></label><label class="gal">ou da galeria<input type="file" accept="image/*" data-o="galeria"></label></div>';
+[].forEach.call(d.querySelectorAll('input'),function(inp){inp.onchange=function(){if(this.files[0])preparar(i,this.files[0],this.dataset.o);this.value=''}});
+var im=d.querySelector('img');if(im)im.onclick=function(){$('verImg').src=fotos[i].prev;$('ver').style.display='flex'};
+$('slots').appendChild(d)});
+var n=c?ROT[c.tipo].length:0,tem=Object.keys(fotos).length,en=erroNova(c),ok=c&&tem===n&&!en;$('enviar').disabled=!ok;
+$('enviar').textContent=c?(en&&tem===n?en:(ok?'Enviar '+n+' fotos':'Faltam '+(n-tem)+' fotos')):'Enviar fotos';$('enviar').hidden=false}
+function msg(t,k){$('msg').innerHTML=t?'<div class="msg '+(k||'')+'">'+t+'</div>':''}
+
+/* ---------- GPS + endereço ---------- */
+function dist(a,b,c,d){var R=6371000,r=Math.PI/180,x=Math.sin((c-a)*r/2),y=Math.sin((d-b)*r/2);return 2*R*Math.asin(Math.sqrt(x*x+Math.cos(a*r)*Math.cos(c*r)*y*y))}
+function gpsBar(){var b=$('gpsbar');if(!pos){b.className='gpsbar bad';b.textContent='📍 Sem GPS. Ative a localização do celular e permita para este site.';return}
+b.className='gpsbar '+(pos.acc<=50?'ok':'bad');b.textContent='📍 '+pos.lat.toFixed(6)+', '+pos.lon.toFixed(6)+' (±'+pos.acc+' m)'+(pos.acc>50?' — precisão baixa, espere melhorar':'')+(end.txt?' · '+end.txt:'')}
+function buscarEnd(lat,lon){if(end.lat!==null&&dist(lat,lon,end.lat,end.lon)<25&&end.txt)return Promise.resolve(end.txt);if(end.busca)return end.busca;
+end.busca=fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&accept-language=pt-BR&zoom=18&lat='+lat+'&lon='+lon).then(function(r){return r.json()}).then(function(j){var a=j.address||{};
+var rua=[a.road||a.pedestrian||a.footway||'',a.house_number||''].filter(Boolean).join(', ');var bai=a.suburb||a.neighbourhood||a.quarter||'';var cid=a.city||a.town||a.village||a.municipality||'';var uf=(a['ISO3166-2-lvl4']||'').split('-')[1]||a.state||'';
+var t=[rua,bai,cid+(uf?' - '+uf:'')].filter(Boolean).join(', ');end={txt:t,lat:lat,lon:lon,busca:null,cidade:cid,uf:uf.length===2?uf:''};gpsBar();autoCidade();return t}).catch(function(){end.busca=null;return end.txt});return end.busca}
+try{navigator.geolocation.watchPosition(function(p){pos={lat:p.coords.latitude,lon:p.coords.longitude,acc:Math.round(p.coords.accuracy),t:Date.now()};gps=[pos.lon,pos.lat,pos.acc];gpsBar();autoCidade();if(!ultOp||dist(pos.lat,pos.lon,ultOp[0],ultOp[1])>10){ultOp=[pos.lat,pos.lon];opcoesCx()}buscarEnd(pos.lat,pos.lon)},function(){pos=null;gpsBar()},{enableHighAccuracy:true,maximumAge:5000,timeout:20000})}catch(e){gpsBar()}
+
+/* ---------- Carimbo ---------- */
+var DIAS=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];function z(n){return(n<10?'0':'')+n}
+function carimbar(ctx,W,H,s){var u=Math.min(W,H)/100;ctx.save();ctx.textBaseline='alphabetic';
+ var hB=u*40,g=ctx.createLinearGradient(0,H-hB,0,H);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(.35,'rgba(0,0,0,.45)');g.addColorStop(1,'rgba(0,0,0,.75)');ctx.fillStyle=g;ctx.fillRect(0,H-hB,W,hB);
+ var bx=u*3,by=u*3,bw=u*24,bh=u*16;ctx.fillStyle='rgba(255,255,255,.55)';rr(ctx,bx,by,bw,bh,u*2.5);ctx.fill();
+ ctx.fillStyle='#13294b';ctx.font='900 '+(u*9)+'px Arial, sans-serif';ctx.textAlign='center';ctx.fillText('3W',bx+bw/2,by+u*10);
+ ctx.font='700 '+(u*2.6)+'px Arial, sans-serif';ctx.fillStyle='#e8731a';ctx.fillText('E N G E N H A R I A',bx+bw/2,by+u*13.8);
+ ctx.textAlign='right';ctx.shadowColor='rgba(0,0,0,.8)';ctx.shadowBlur=u*.8;ctx.fillStyle='#ffd23f';ctx.font='800 '+(u*4.2)+'px Arial, sans-serif';ctx.fillText(s.caixa,W-u*3,u*7.5);
+ ctx.fillStyle='#fff';ctx.font='600 '+(u*3)+'px Arial, sans-serif';ctx.fillText(s.obra+' · Foto '+s.n+'/'+s.tot,W-u*3,u*11.5);
+ var d=s.data,x=u*3,yb=H-u*3;ctx.textAlign='left';
+ var linhas=[];if(s.end)linhas.push(s.end);linhas.push(s.coord);
+ ctx.font='500 '+(u*3.3)+'px Arial, sans-serif';var lh=u*4.6;var yTxt=yb-(linhas.length-1)*lh;
+ var maxW=W-u*6;if(s.end&&ctx.measureText(s.end).width>maxW){var p=quebra(ctx,s.end,maxW);linhas=p.concat([s.coord]);yTxt=yb-(linhas.length-1)*lh}
+ linhas.forEach(function(t,i){ctx.fillText(t,x,yTxt+i*lh)});
+ var yH=yTxt-lh*1.1;ctx.font='300 '+(u*13)+'px Arial, sans-serif';var hora=z(d.getHours())+':'+z(d.getMinutes());ctx.fillText(hora,x,yH);var wH=ctx.measureText(hora).width;
+ ctx.fillStyle='#fff';ctx.fillRect(x+wH+u*2,yH-u*10,u*.5,u*10);
+ ctx.font='500 '+(u*4.2)+'px Arial, sans-serif';ctx.fillText(z(d.getDate())+'/'+z(d.getMonth()+1)+'/'+d.getFullYear(),x+wH+u*4,yH-u*6);
+ ctx.fillText(DIAS[d.getDay()],x+wH+u*4,yH-u*.5);
+ ctx.textAlign='right';ctx.font='500 '+(u*2.8)+'px Arial, sans-serif';ctx.fillStyle='rgba(255,255,255,.9)';ctx.fillText('Técnico: '+s.tec,W-u*3,yH-u*.5);
+ ctx.restore()}
+function rr(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath()}
+function quebra(c,t,m){var ps=t.split(' '),l=[],a='';ps.forEach(function(p){var n=a?a+' '+p:p;if(c.measureText(n).width>m&&a){l.push(a);a=p}else a=n});if(a)l.push(a);return l.slice(0,2)}
+
+async function preparar(i,f,origem){var o=obraAtual(),c=cxAtual();if(!o||!c)return;var quando=new Date();var p=pos?{lat:pos.lat,lon:pos.lon,acc:pos.acc}:null;
+var endTxt='';if(origem==='camera'&&p){msg('Gerando carimbo…');endTxt=await Promise.race([buscarEnd(p.lat,p.lon),new Promise(function(r){setTimeout(function(){r(end.txt)},4000)})])||'';msg('')}
+var img=new Image(),u=URL.createObjectURL(f);img.onload=function(){var M=1600,s=Math.min(1,M/Math.max(img.width,img.height)),cv=document.createElement('canvas');cv.width=Math.round(img.width*s);cv.height=Math.round(img.height*s);var ctx=cv.getContext('2d');ctx.drawImage(img,0,0,cv.width,cv.height);
+if(origem==='camera')carimbar(ctx,cv.width,cv.height,{data:quando,coord:p?'Coordenadas: '+p.lat.toFixed(6)+', '+p.lon.toFixed(6)+' (±'+p.acc+' m)':'Coordenadas: sem GPS',end:endTxt,caixa:c.nome||'CAIXA NOVA',obra:o.codigo+' · '+o.cidade+'/'+o.uf,n:i+1,tot:ROT[c.tipo].length,tec:$('tec').value.trim()||'-'});
+var du=cv.toDataURL('image/jpeg',.85);fotos[i]={b64:du.split(',')[1],prev:du,nome:String(f.name||'foto').replace(/\.[^.]+$/,''),origem:origem,geo:p?[p.lon,p.lat,p.acc]:null,em:quando.toISOString(),end:endTxt};URL.revokeObjectURL(u);
+if(origem==='camera'&&!p)msg('Foto '+(i+1)+' ficou sem GPS. Ative a localização e tire de novo, senão o escritório não consegue enviar.','bad');render();salvar(true)};
+img.onerror=function(){msg('Não consegui abrir essa foto. Tente outra.','bad')};img.src=u}
+
+function run(fn){var a=[].slice.call(arguments,1);return fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({fn:fn,args:a})}).then(function(r){if(!r.ok)throw new Error('servidor respondeu '+r.status);return r.json()}).then(function(j){if(!j||!j.ok)throw new Error(j&&j.erro||'erro no servidor');return j.r})}
+$('enviar').onclick=async function(){var o=obraAtual(),c=cxAtual();if(!o||!c)return;var tec=$('tec').value.trim();if(!tec){msg('Preencha seu nome ou equipe.','bad');$('tec').focus();return}
+var en=erroNova(c);if(en){msg(en,'bad');return}try{localStorage.setItem('tec3w',tec)}catch(e){}
+var b=this;b.disabled=true;var n=ROT[c.tipo].length;
+var geos=[];for(var k=0;k<n;k++)if(fotos[k].geo)geos.push(fotos[k].geo);geos.sort(function(a,b){return a[2]-b[2]});
+var meta={obraId:o.id,codigo:o.codigo,cidade:o.cidade,caixaId:c.id,caixaNome:c.nome,tipo:c.tipo,novo:!!c.novo,tecnico:tec,obs:$('obs').value.trim(),gps:geos[0]||gps,endereco:(fotos[0]&&fotos[0].end)||end.txt||'',carimbo:'3W v2',app:'v4',slots:{},fotosInfo:{}};
+try{b.textContent='Guardando…';var item={uid:Date.now().toString(36)+Math.random().toString(36).slice(2,6),meta:meta,n:n,fotos:[],nomes:[],envioId:null,feitos:{},criado:new Date().toISOString(),rotulo:c.nome+' · '+o.cidade};
+for(var i=0;i<n;i++){item.fotos.push(fotos[i].b64);item.nomes.push(fotos[i].nome);meta.fotosInfo['f'+(i+1)]={origem:fotos[i].origem,geo:fotos[i].geo,em:fotos[i].em}}
+var fl=await filaLer();fl.push(item);if(!(await filaGravar(fl)))throw new Error('o celular não deixou guardar as fotos (memória cheia?)');
+marcarEnvLocal(c.id,'pendente');
+if(c.novo)o.caixas.push({id:c.id,nome:c.nome,tipo:c.tipo,enviada:true,novo:true});
+fotos={};$('obs').value='';$('novaNome').value='';$('cx').value='';$('cx').dataset.ant='';await limparRascunho();
+b.textContent='Enviar fotos';telaFim(o,c);filaBar();sincronizar()}
+catch(e){b.disabled=false;b.textContent='Enviar fotos';render();msg('Não foi possível guardar: '+(e&&e.message||e)+'. As fotos continuam na tela, tente de novo.','bad')}};
+
+function telaFim(o,c){var falta=pendentes(o),outras=obras.filter(function(x){return x!==o&&pendentes(x).length});
+var h='';if(!falta.length){h='<div class="done"><b>Todas as caixas prontas ✓</b>Todas as caixas de '+o.cidade+' ('+o.codigo+') estão feitas.<p class="note">As fotos vão para o escritório sozinhas assim que o celular tiver internet. Última: '+c.nome+'. Obrigado!</p>'+
+'<button class="big" id="fNova">➕ Cadastrar caixa nova nesta obra</button>'+(outras.length?'<button class="big sec" id="fCid">Enviar de outra cidade</button>':'')+'</div>'}
+else{h='<div class="done"><b>Fotos guardadas ✓</b><span class="note">Vão para o escritório sozinhas assim que o celular tiver internet.</span><br>'+c.nome+'<br>'+o.cidade+'<p class="note">Falta'+(falta.length>1?'m ':' ')+falta.length+' caixa'+(falta.length>1?'s':'')+' nesta obra:</p><ul>'+falta.map(function(x){return'<li>'+x.nome+'</li>'}).join('')+'</ul>'+
+'<button class="big" id="fOutra">Enviar outra caixa</button><button class="big sec" id="fNova">➕ Cadastrar caixa nova (rompimento)</button></div>'}
+$('done').innerHTML=h;$('done').hidden=false;$('form').hidden=true;$('enviar').hidden=true;window.scrollTo(0,0);
+var volta=function(cx){var ob=$('obra').value;$('done').hidden=true;$('form').hidden=false;msg('');montarCidades();$('cid').onchange();if(ob){$('obra').value=ob;if($('obra').value===ob)montarCx()}if(cx){$('cx').value=cx;$('cx').dataset.ant=cx;render()}salvar(true);window.scrollTo(0,0)};
+if($('fOutra'))$('fOutra').onclick=function(){volta('')};
+if($('fNova'))$('fNova').onclick=function(){volta(NOVA);$('novaNome').focus()};
+if($('fCid'))$('fCid').onclick=function(){cidManual=false;$('cid').value='';$('cid').dataset.ant='';volta('');autoCidade()}}
+
+/* ---------- Fila offline: caixas guardadas no celular até ter internet ---------- */
+function filaLer(){return kvGet('fila').then(function(f){return Array.isArray(f)?f:[]})}
+function filaGravar(f){return kvSet('fila',f)}
+var sincronizando=false,ultimoErro='';
+function filaBar(){filaLer().then(function(f){var el=$('filaBar');if(!f.length){if(el.dataset.teve){el.className='fila ok';el.innerHTML='✓ Tudo enviado para o escritório.';el.hidden=false;setTimeout(function(){el.hidden=true;el.dataset.teve=''},6000)}else el.hidden=true;return}
+el.dataset.teve='1';el.className='fila';el.hidden=false;
+el.innerHTML='📤 '+f.length+' caixa'+(f.length>1?'s':'')+' guardada'+(f.length>1?'s':'')+' no celular'+(sincronizando?', enviando…':navigator.onLine?(ultimoErro?' (sinal fraco, tentando de novo)':''):', aguardando internet')+(sincronizando?'':'<button type="button" id="filaJa">Enviar agora</button>');
+var bj=$('filaJa');if(bj)bj.onclick=function(){ultimoErro='';sincronizar()}})}
+async function sincronizar(){if(sincronizando)return;if(!API||API.indexOf('http')!==0)return;sincronizando=true;filaBar();
+try{var f=await filaLer();
+while(f.length){var it=f[0];
+ if(!it.envioId){it.envioId=await run('novoEnvio',{obraId:it.meta.obraId,caixaId:it.meta.caixaId,tecnico:it.meta.tecnico,uid:it.uid});await filaGravar(f)}
+ for(var i=0;i<it.n;i++){var k='f'+(i+1);if(it.feitos[k])continue;it.feitos[k]=await run('salvarFoto',it.envioId,i+1,it.fotos[i],it.nomes[i]);it.fotos[i]=null;await filaGravar(f);filaBar()}
+ it.meta.slots=it.feitos;var r=await run('finalizar',it.envioId,it.meta);
+ if(r&&r.enviadas)juntarEnv(r.enviadas);marcarEnvLocal(it.meta.caixaId,it.envioId);
+ f.shift();await filaGravar(f)}
+ ultimoErro=''}
+catch(e){ultimoErro=String(e&&e.message||e)}
+finally{sincronizando=false;filaBar()}}
+window.addEventListener('online',function(){sincronizar();atualizarDados()});
+setInterval(function(){filaLer().then(function(f){if(f.length&&navigator.onLine)sincronizar()})},60000);
+function atualizarDados(){if(!API||API.indexOf('http')!==0)return;var ctl=window.AbortController?new AbortController():null;var t=setTimeout(function(){ctl&&ctl.abort()},15000);
+fetch(API+'?api=dados',ctl?{signal:ctl.signal}:{}).then(function(r){return r.json()}).then(function(d){clearTimeout(t);if(!d||!d.obras)return;var novo=JSON.stringify(d),velho=localStorage.getItem('dados3w');
+try{localStorage.setItem('dados3w',novo)}catch(e){}
+if(novo!==velho){var ocupado=Object.keys(fotos).length||$('cx').value!=='';if(SEM_DADOS||!ocupado)location.reload();else msg('Lista de obras atualizada. Ela aparece quando você terminar esta caixa.','ok')}}).catch(function(){clearTimeout(t);if(SEM_DADOS)msg('Primeira vez: abra o app com internet para baixar a lista de obras. Depois ele funciona sem sinal.','bad')})}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(function(){})}
+filaBar();atualizarDados();setTimeout(sincronizar,3000);
+
+/* ---------- Ao abrir: recupera o que já tinha sido feito ---------- */
+gpsBar();
+kvGet('rascunho').then(function(r){if(!r)return;restaurando=true;try{
+if(r.tec&&!$('tec').value)$('tec').value=r.tec;
+if(r.cid&&cids[r.cid]){cidManual=true;$('cid').value=r.cid;$('cid').dataset.ant=r.cid;$('cid').onchange();if(r.obra){$('obra').value=r.obra;if($('obra').value===r.obra)montarCx()}}
+if(r.cx){if(r.cx===NOVA){$('novaTipo').value=r.novaTipo||'CEO';$('novaTipo').dataset.ant=$('novaTipo').value;$('novaNome').value=r.novaNome||''}
+$('cx').value=r.cx;if($('cx').value!==r.cx&&r.cx!==NOVA){mostrarEnv=true;opcoesCx();$('cx').value=r.cx}$('cx').dataset.ant=$('cx').value}
+$('obs').value=r.obs||'';var c=cxAtual(),n=0;
+if(c&&r.fotos){Object.keys(r.fotos).forEach(function(i){var x=r.fotos[i];if(+i<ROT[c.tipo].length&&x&&x.b64){x.prev='data:image/jpeg;base64,'+x.b64;fotos[i]=x;n++}})}
+render();if(n)msg('Recuperei '+n+' foto'+(n>1?'s':'')+' de '+(c.nome||'caixa nova')+' que você já tinha tirado. É só continuar.','ok')}catch(e){}restaurando=false})
+</script></body></html>
