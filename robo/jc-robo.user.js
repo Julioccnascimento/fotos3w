@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         JC Robô de Envio – Obras Brisanet
 // @namespace    jc-engenharia
-// @version      1.3.0
+// @version      1.4.0
 // @updateURL    https://raw.githubusercontent.com/Julioccnascimento/fotos3w/main/robo/jc-robo.user.js
 // @downloadURL  https://raw.githubusercontent.com/Julioccnascimento/fotos3w/main/robo/jc-robo.user.js
-// @description  Envia sozinho os formulários de produção (RELATÓRIO DE MATERIAL) e de fotos CEO/CTO do painel de obras, e puxa as fotos que o técnico manda pelo app.
+// @description  Envia sozinho os formulários de produção (RELATÓRIO DE MATERIAL) e de fotos CEO/CTO do painel de obras, puxa as fotos e os testes OTDR que o técnico manda pelo app.
 // @match        https://a6f27b2c-197a-4641-8126-0776a82e35eb.frame.claudeusercontent.com/*
 // @match        https://docs.google.com/forms/*
 // @run-at       document-idle
@@ -24,11 +24,12 @@
 
 (function () {
   'use strict';
-  const VER = '1.3.0';
+  const VER = '1.4.0';
   const FORM_PROD = '1FAIpQLSdD0NVI7nhda_pWRitr6d81AP1vbQGe90T2bto8nVLSQuo_CA';
   const FORM_FOTO = '1FAIpQLScPZ4LTRqMnu0dxaV_6cANWTFa1c1C5UlgrrHpTXwT9m4PRAg';
   const FOTO_URL = 'https://docs.google.com/forms/d/e/' + FORM_FOTO + '/viewform?usp=pp_url';
   const ENVIOS = '143_TAYcgT-BK2WjgKq9hrDt6-DDi292Z';
+  const RAIZ = '1p_gxM2o_CKFgdXV8IWquD9EdMc1BeIM7';
   const CONTA = 'marisuljeans@gmail.com';
   const SLOTS = {
     RESERVA: ['reserva-perto', 'reserva-longe'],
@@ -267,6 +268,39 @@
       finally { importando = false; ui(); setTimeout(despacha, 3000); }
     }
 
+    // --- testes OTDR do técnico (Drive: raiz/otdr/<envio>) ---
+    let importandoO = false;
+    async function importaOtdr() {
+      if (importandoO || !S.db || !W.__jcOtdr) return; importandoO = true;
+      try {
+        const raiz = await pasta(RAIZ); if (!raiz) { erro('não consegui listar a pasta raiz do app (' + ultimoErroRede + ')'); return; }
+        const po = raiz.find(e => e.pasta && e.nome === 'otdr'); if (!po) return; // nenhum teste enviado ainda
+        const envios = await pasta(po.id); if (!envios) return;
+        const feitos = getJ('jcOtdr', {});
+        for (const ev of envios.filter(e => e.pasta)) {
+          if (feitos[ev.nome]) continue;
+          const arqs = await pasta(ev.id); if (!arqs) continue;
+          const mf = arqs.find(a => a.nome === 'manifest.json'); if (!mf) continue; // ainda chegando
+          const txt = await driveText(mf.id); if (!txt) { erro('não li o manifest OTDR ' + ev.nome); continue; }
+          let m; try { m = JSON.parse(txt); } catch (e) { erro('manifest OTDR inválido ' + ev.nome); continue; }
+          const o = S.obras.find(x => x.id === m.obraId); if (!o) { feitos[ev.nome] = 'obra não achada'; erro('OTDR ' + ev.nome + ': obra ' + m.obraId + ' não está no painel'); continue; }
+          const files = []; let falhou = 0;
+          for (const a of (m.arquivos || [])) {
+            const b = a.id && await driveBlob(a.id); if (!b) { falhou++; continue; }
+            const pdf = /\.pdf$/i.test(a.nome);
+            files.push(new File([b], a.nome, { type: pdf ? 'application/pdf' : 'application/octet-stream' }));
+          }
+          if (!files.length) { erro('OTDR ' + ev.nome + ': não baixei os arquivos'); continue; }
+          const info = 'Testes OTDR recebidos do técnico ' + (m.tecnico || '') + ': ' + m.a + ' → ' + m.b + ' (' + files.length + ' arquivo' + (files.length > 1 ? 's' : '') + ')' + (falhou ? ', ' + falhou + ' não baixado(s)' : '') + (m.obs ? '. Obs.: ' + m.obs : '');
+          await W.__jcOtdr(m.obraId, m.a, m.b, m.tipoTrecho, files, info);
+          feitos[ev.nome] = now(); setJ('jcOtdr', feitos); log('OTDR importado ' + ev.nome + ' ' + m.obraId + ' ' + m.a + ' → ' + m.b);
+          await sleep(1500);
+        }
+        setJ('jcOtdr', feitos);
+      } catch (e) { erro('importar OTDR: ' + (e.message || e.code || e)); }
+      finally { importandoO = false; ui(); }
+    }
+
     // --- painel do robô ---
     let box = null;
     function ui() {
@@ -306,6 +340,7 @@
       ui();
       setTimeout(despacha, 8000); setInterval(despacha, 30000);
       setTimeout(importa, 12000); setInterval(importa, 5 * 60000);
+      setTimeout(importaOtdr, 40000); setInterval(importaOtdr, 5 * 60000);
       // aviso de versão nova (o Tampermonkey atualiza com 1 clique)
       setTimeout(async () => {
         const t = await gm('https://raw.githubusercontent.com/Julioccnascimento/fotos3w/main/robo/jc-robo.user.js?t=' + Date.now(), 'text'); const m = t && t.match(/@version\s+([\d.]+)/); if (!m) return;
