@@ -29,10 +29,14 @@ select,input[type=text],textarea{width:100%;font-family:inherit;font-size:16px;p
 .done .sec{background:#fff;color:var(--navy);border:1px solid var(--navy)}
 .done ul{text-align:left;font-size:14px;color:var(--muted);padding-left:20px}
 .fila{margin:10px 16px 0;padding:10px 12px;border-radius:10px;font-size:14px;background:#fff3e6;border:1px solid var(--orange);color:#7a3d06;max-width:640px}.fila button{margin-left:8px;border:0;background:var(--orange);color:#fff;border-radius:999px;padding:5px 12px;font-weight:700}.fila.ok{background:#e3f3ea;border-color:var(--ok);color:var(--ok)}
+.abas{display:flex;gap:6px;padding:10px 16px 0;max-width:640px;margin:0 auto}.abas button{flex:1;border:1px solid var(--line);background:#fff;color:var(--navy);border-radius:999px;padding:9px 6px;font-weight:700;font-size:14px}.abas button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.arq{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px;margin-top:8px}.arq .t{flex:1;min-width:0;font-size:14px;word-break:break-word}.arq button{border:0;background:var(--orange);color:#fff;border-radius:999px;padding:8px 12px;font-weight:700;white-space:nowrap}.arq button.sec{background:#fff;color:var(--navy);border:1px solid var(--navy)}
+.big2{display:block;width:100%;margin-top:16px;padding:15px;border:0;border-radius:999px;background:var(--navy);color:#fff;font-size:16px;font-weight:800}.big2:disabled{background:#8794aa}
 #ver{position:fixed;inset:0;background:rgba(0,0,0,.9);display:none;align-items:center;justify-content:center;z-index:9}#ver img{max-width:100%;max-height:100%}
 </style></head><body>
 <header><b>3W · Fotos de campo</b><span>Envie as fotos da caixa direto para o escritório · funciona sem sinal</span></header>
 <div id="filaBar" class="fila" hidden></div>
+<nav class="abas"><button type="button" data-aba="fotos" class="on">📷 Fotos</button><button type="button" data-aba="otdr">📈 Testes OTDR</button><button type="button" data-aba="arq">📁 Arquivos</button></nav>
 <main id="app">
 <div id="form">
 <label class="f">Seu nome ou equipe</label><input type="text" id="tec" placeholder="Ex.: Renato · LF1">
@@ -54,6 +58,25 @@ select,input[type=text],textarea{width:100%;font-family:inherit;font-size:16px;p
 <div id="msg"></div>
 </div>
 <div id="done" hidden></div>
+</main>
+<main id="otdrView" hidden>
+<label class="f">Seu nome ou equipe</label><input type="text" id="oTec" placeholder="Ex.: Renato · LF1">
+<label class="f">Cidade</label><select id="oCid"><option value="">Escolha a cidade…</option></select>
+<div id="oObraBox" hidden><label class="f">Projeto</label><select id="oObra"></select></div>
+<label class="f">Ponta A (início do trecho)</label><select id="oA"></select><input type="text" id="oAo" placeholder="Nome da caixa" hidden style="margin-top:6px">
+<label class="f">Ponta B (fim do trecho)</label><select id="oB"></select><input type="text" id="oBo" placeholder="Nome da caixa" hidden style="margin-top:6px">
+<label class="f">Tipo do trecho</label><select id="oTipo"><option value="06">Sem anel (1 teste por fibra)</option><option value="anel">Em anel (ida e volta)</option></select>
+<label class="f">Arquivos do OTDR (PDF e .sor)</label><input type="file" id="oArq" multiple accept=".pdf,.sor,.json,application/pdf,application/octet-stream">
+<div id="oLista" class="note"></div>
+<label class="f">Observação (opcional)</label><textarea id="oObs" rows="2"></textarea>
+<div id="oMsg"></div>
+<button type="button" class="big2" id="oEnviar" disabled>Enviar testes</button>
+</main>
+<main id="arqView" hidden>
+<p class="note">Baixe aqui o KMZ e o esquema unifilar da obra. O que você baixar fica guardado no celular e abre mesmo sem sinal.</p>
+<label class="f">Cidade</label><select id="aCid"><option value="">Escolha a cidade…</option></select>
+<div id="aObraBox" hidden><label class="f">Projeto</label><select id="aObra"></select></div>
+<div id="aMsg"></div><div id="aLista"></div>
 </main>
 <div id="ver" onclick="this.style.display='none'"><img id="verImg"></div>
 <button id="enviar" disabled>Enviar fotos</button>
@@ -207,11 +230,14 @@ function filaGravar(f){return kvSet('fila',f)}
 var sincronizando=false,ultimoErro='';
 function filaBar(){filaLer().then(function(f){var el=$('filaBar');if(!f.length){if(el.dataset.teve){el.className='fila ok';el.innerHTML='✓ Tudo enviado para o escritório.';el.hidden=false;setTimeout(function(){el.hidden=true;el.dataset.teve=''},6000)}else el.hidden=true;return}
 el.dataset.teve='1';el.className='fila';el.hidden=false;
-el.innerHTML='📤 '+f.length+' caixa'+(f.length>1?'s':'')+' guardada'+(f.length>1?'s':'')+' no celular'+(sincronizando?', enviando…':navigator.onLine?(ultimoErro?' (sinal fraco, tentando de novo)':''):', aguardando internet')+(sincronizando?'':'<button type="button" id="filaJa">Enviar agora</button>');
+el.innerHTML='📤 '+f.length+' envio'+(f.length>1?'s':'')+' guardado'+(f.length>1?'s':'')+' no celular'+(sincronizando?', enviando…':navigator.onLine?(ultimoErro?' (sinal fraco, tentando de novo)':''):', aguardando internet')+(sincronizando?'':'<button type="button" id="filaJa">Enviar agora</button>');
 var bj=$('filaJa');if(bj)bj.onclick=function(){ultimoErro='';sincronizar()}})}
 async function sincronizar(){if(sincronizando)return;if(!API||API.indexOf('http')!==0)return;sincronizando=true;filaBar();
 try{var f=await filaLer();
 while(f.length){var it=f[0];
+ if(it.tipo==='otdr'){if(!it.envioId){it.envioId=await run('novoEnvioOtdr',{obraId:it.meta.obraId,a:it.meta.a,b:it.meta.b,tecnico:it.meta.tecnico,uid:it.uid});await filaGravar(f)}
+  for(var j=0;j<it.arqs.length;j++){var ak='a'+j;if(it.feitos[ak])continue;it.feitos[ak]=await run('salvarArquivoOtdr',it.envioId,it.arqs[j].b64,it.arqs[j].nome,it.arqs[j].mime);it.arqs[j].b64=null;await filaGravar(f);filaBar()}
+  it.meta.arquivos=it.arqs.map(function(x,j){return{nome:x.nome,id:it.feitos['a'+j]}});await run('finalizarOtdr',it.envioId,it.meta);f.shift();await filaGravar(f);continue}
  if(!it.envioId){it.envioId=await run('novoEnvio',{obraId:it.meta.obraId,caixaId:it.meta.caixaId,tecnico:it.meta.tecnico,uid:it.uid});await filaGravar(f)}
  for(var i=0;i<it.n;i++){var k='f'+(i+1);if(it.feitos[k])continue;it.feitos[k]=await run('salvarFoto',it.envioId,i+1,it.fotos[i],it.nomes[i]);it.fotos[i]=null;await filaGravar(f);filaBar()}
  it.meta.slots=it.feitos;var r=await run('finalizar',it.envioId,it.meta);
@@ -228,6 +254,52 @@ try{localStorage.setItem('dados3w',novo)}catch(e){}
 if(novo!==velho){var ocupado=Object.keys(fotos).length||$('cx').value!=='';if(SEM_DADOS||!ocupado)location.reload();else msg('Lista de obras atualizada. Ela aparece quando você terminar esta caixa.','ok')}}).catch(function(){clearTimeout(t);if(SEM_DADOS)msg('Primeira vez: abra o app com internet para baixar a lista de obras. Depois ele funciona sem sinal.','bad')})}
 if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(function(){})}
 filaBar();atualizarDados();setTimeout(sincronizar,3000);
+
+/* ---------- Abas ---------- */
+function aba(n){[].forEach.call(document.querySelectorAll('.abas button'),function(b){b.classList.toggle('on',b.dataset.aba===n)});$('app').hidden=n!=='fotos';$('otdrView').hidden=n!=='otdr';$('arqView').hidden=n!=='arq';$('enviar').style.display=n==='fotos'?'':'none';try{localStorage.setItem('aba3w',n)}catch(e){}window.scrollTo(0,0)}
+[].forEach.call(document.querySelectorAll('.abas button'),function(b){b.onclick=function(){aba(b.dataset.aba)}});
+function encherCid(sel){sel.innerHTML='<option value="">Escolha a cidade…</option>'+Object.keys(cids).sort().map(function(c){return'<option>'+c.replace(/</g,'')+'</option>'}).join('')}
+function obraDe(cidSel,obraSel){var l=cids[cidSel.value]||[];return l.length===1?l[0]:l.find(function(o){return o.id===obraSel.value})}
+function ligaCid(cidSel,box,obraSel,depois){cidSel.onchange=function(){var l=cids[cidSel.value]||[];box.hidden=l.length<2;obraSel.innerHTML=l.map(function(o){return'<option value="'+o.id+'">'+o.codigo+'</option>'}).join('');depois()};obraSel.onchange=depois}
+function b64De(file){return new Promise(function(ok,no){var r=new FileReader();r.onload=function(){ok(String(r.result).split(',')[1])};r.onerror=no;r.readAsDataURL(file)})}
+
+/* ---------- Testes OTDR ---------- */
+encherCid($('oCid'));try{$('oTec').value=localStorage.getItem('tec3w')||''}catch(e){}
+var OUTRA='__outra';
+function pontas(){var o=obraDe($('oCid'),$('oObra'));var h='<option value="">Escolha…</option>'+(o?o.caixas.map(function(c){return'<option>'+c.nome.replace(/</g,'')+'</option>'}).join(''):'')+'<option value="'+OUTRA+'">Outra (digitar)</option>';$('oA').innerHTML=h;$('oB').innerHTML=h;$('oAo').hidden=true;$('oBo').hidden=true;oCheck()}
+ligaCid($('oCid'),$('oObraBox'),$('oObra'),pontas);pontas();
+$('oA').onchange=function(){$('oAo').hidden=this.value!==OUTRA;oCheck()};$('oB').onchange=function(){$('oBo').hidden=this.value!==OUTRA;oCheck()};
+$('oAo').oninput=oCheck;$('oBo').oninput=oCheck;$('oTec').oninput=oCheck;
+function ponta(sel,txt){return sel.value===OUTRA?txt.value.trim().toUpperCase():sel.value}
+$('oArq').onchange=function(){var fs=[].slice.call(this.files);$('oLista').innerHTML=fs.length?fs.length+' arquivo(s): '+fs.map(function(f){return f.name.replace(/</g,'')}).join(', '):'';oCheck()};
+function oCheck(){var ok=obraDe($('oCid'),$('oObra'))&&ponta($('oA'),$('oAo'))&&ponta($('oB'),$('oBo'))&&$('oArq').files.length&&$('oTec').value.trim();$('oEnviar').disabled=!ok;return ok}
+$('oEnviar').onclick=async function(){if(!oCheck())return;var o=obraDe($('oCid'),$('oObra')),b=this;b.disabled=true;b.textContent='Guardando…';
+try{var tec=$('oTec').value.trim();try{localStorage.setItem('tec3w',tec)}catch(e){}
+var arqs=[];for(var f of [].slice.call($('oArq').files)){arqs.push({nome:f.name,mime:f.type||'application/octet-stream',b64:await b64De(f)})}
+var item={tipo:'otdr',uid:Date.now().toString(36)+Math.random().toString(36).slice(2,6),meta:{obraId:o.id,codigo:o.codigo,cidade:o.cidade,a:ponta($('oA'),$('oAo')),b:ponta($('oB'),$('oBo')),tipoTrecho:$('oTipo').value,tecnico:tec,obs:$('oObs').value.trim(),app:'v6'},arqs:arqs,envioId:null,feitos:{},criado:new Date().toISOString()};
+var fl=await filaLer();fl.push(item);if(!(await filaGravar(fl)))throw new Error('o celular não deixou guardar (memória cheia?)');
+$('oArq').value='';$('oLista').textContent='';$('oObs').value='';$('oMsg').innerHTML='<div class="msg ok">Testes guardados ✓ '+item.meta.a+' → '+item.meta.b+'. Vão para o escritório sozinhos assim que tiver internet.</div>';
+filaBar();sincronizar()}catch(e){$('oMsg').innerHTML='<div class="msg bad">Não foi possível guardar: '+String(e&&e.message||e)+'</div>'}
+b.textContent='Enviar testes';oCheck()};
+
+/* ---------- Arquivos da obra ---------- */
+encherCid($('aCid'));
+function tam(n){return n>1048576?(n/1048576).toFixed(1).replace('.',',')+' MB':Math.max(1,Math.round(n/1024))+' KB'}
+function salvarNoAparelho(nome,mime,b64){var s=atob(b64),a=new Uint8Array(s.length);for(var i=0;i<s.length;i++)a[i]=s.charCodeAt(i);var bl=new Blob([a],{type:mime||'application/octet-stream'}),u=URL.createObjectURL(bl),l=document.createElement('a');l.href=u;l.download=nome;document.body.appendChild(l);l.click();setTimeout(function(){URL.revokeObjectURL(u);l.remove()},4000)}
+async function listaArq(){var o=obraDe($('aCid'),$('aObra'));$('aLista').innerHTML='';$('aMsg').innerHTML='';if(!o)return;
+var idx=(await kvGet('arqIdx'))||{},guard=idx[o.id]||[],online=null;
+try{var r=await fetch(API+'?api=arquivos&obra='+encodeURIComponent(o.id));online=(await r.json()).arquivos||[]}catch(e){}
+var L=online||guard;if(!L.length){$('aMsg').innerHTML='<div class="msg bad">'+(online?'Ainda não tem arquivos desta obra no app. Avise o escritório.':'Sem internet e nada guardado desta obra no celular.')+'</div>';return}
+if(!online)$('aMsg').innerHTML='<div class="msg">Sem internet: mostrando só o que já está guardado no celular.</div>';
+L.forEach(function(a){var tem=guard.some(function(g){return g.id===a.id}),d=document.createElement('div');d.className='arq';
+d.innerHTML='<div class="t"><b></b><br><small class="note">'+tam(a.tamanho||0)+(tem?' · guardado no celular ✓':'')+'</small></div><button type="button">'+(tem?'Abrir':'Baixar')+'</button>';
+d.querySelector('b').textContent=a.nome;
+d.querySelector('button').onclick=async function(){var bt=this;bt.disabled=true;bt.textContent='…';try{var c=await kvGet('arq:'+a.id);
+if(!c){var r=await fetch(API+'?api=arquivo&id='+encodeURIComponent(a.id)),j=await r.json();if(!j||!j.b64)throw new Error(j&&j.erro||'não veio');c={nome:j.nome,mime:j.mime,b64:j.b64};await kvSet('arq:'+a.id,c);var ix=(await kvGet('arqIdx'))||{};ix[o.id]=(ix[o.id]||[]).filter(function(g){return g.id!==a.id}).concat([{id:a.id,nome:a.nome,tamanho:a.tamanho}]);await kvSet('arqIdx',ix)}
+salvarNoAparelho(c.nome,c.mime,c.b64);bt.textContent='Abrir';listaArq()}catch(e){bt.textContent='Tentar de novo';$('aMsg').innerHTML='<div class="msg bad">Não consegui baixar: '+String(e&&e.message||e)+'</div>'}bt.disabled=false};
+$('aLista').appendChild(d)})}
+ligaCid($('aCid'),$('aObraBox'),$('aObra'),listaArq);
+try{var ab=localStorage.getItem('aba3w');if(ab&&ab!=='fotos')aba(ab)}catch(e){}
 
 /* ---------- Ao abrir: recupera o que já tinha sido feito ---------- */
 gpsBar();
