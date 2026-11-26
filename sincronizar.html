@@ -1,0 +1,45 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3W · Sincronizar arquivos das obras</title>
+<style>
+body{margin:0;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;background:#f3f5f9;color:#14213a}
+header{background:#13294b;color:#fff;padding:14px 18px}header b{font-size:18px}header span{display:block;font-size:13px;opacity:.8}
+main{max-width:760px;margin:0 auto;padding:16px 18px 60px}
+label{display:block;font-weight:700;margin:14px 0 6px}input[type=password]{width:100%;max-width:360px;padding:10px;font-size:15px;border:1px solid #d4dae3;border-radius:8px}
+button{border:0;background:#e8731a;color:#fff;border-radius:999px;padding:11px 18px;font-weight:800;font-size:15px;cursor:pointer}button:disabled{background:#8794aa}
+.box{background:#fff;border:1px solid #d4dae3;border-radius:12px;padding:12px 14px;margin-top:14px}
+.note{color:#5b6780;font-size:13px}#log{font:12.5px/1.5 ui-monospace,Consolas,monospace;white-space:pre-wrap;max-height:420px;overflow:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}td,th{border-bottom:1px solid #eef1f5;padding:5px 6px;text-align:left}
+</style></head><body>
+<header><b>3W · Sincronizar arquivos das obras</b><span>Leva o KMZ e o esquema unifilar de cada obra do OneDrive para o app dos técnicos</span></header>
+<main>
+<div class="box">
+<label>Chave do escritório</label><input type="password" id="chave" placeholder="cole a chave uma vez; fica guardada neste navegador">
+<label>Pasta das obras</label>
+<p class="note">Clique no botão e escolha a pasta <b>BRISANET</b> do OneDrive (a que tem GO, MS…). O navegador vai perguntar se pode enviar os arquivos: confirme. Só o KMZ do projeto, o KMZ do enlace e o esquema (unifilar) da pasta <b>01 - ARQUIVO BASE</b> de cada obra são enviados; o resto (fotos, drone, medições) é ignorado.</p>
+<input type="file" id="pasta" webkitdirectory directory multiple>
+</div>
+<div class="box"><div id="resumo" class="note">Nenhuma pasta escolhida.</div><p><button id="ir" disabled>Enviar arquivos novos ou alterados</button></p></div>
+<div class="box"><div id="log"></div></div>
+</main>
+<script>
+var API='https://script.google.com/macros/s/AKfycbxRCxFTmc6rzmc0DGRPiAogQIn2X6CK-n7jcvZfp6Hs9Jxqw9S_i6P0B2krUrbEfys65Q/exec';
+var $=function(i){return document.getElementById(i)},plano=[];
+try{$('chave').value=localStorage.getItem('chave3w')||''}catch(e){}
+$('chave').oninput=function(){try{localStorage.setItem('chave3w',this.value.trim())}catch(e){}};
+function log(t){$('log').textContent+=t+'\n';$('log').scrollTop=1e9}
+function run(fn){var a=[].slice.call(arguments,1);return fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({fn:fn,args:a})}).then(function(r){return r.json()}).then(function(j){if(!j||!j.ok)throw new Error(j&&j.erro||'erro');return j.r})}
+var OBRA=/^(GO|MS|MT)-[A-Z]{2,5}\d{4}(\.\d+)?$/i,QUER=/^(KMZ_DO_PROJETO|KMZ_DO_ENLACE|ESQUEMA)/i;
+$('pasta').onchange=async function(){var fs=[].slice.call(this.files);plano=[];var obras=new Set();
+for(var f of fs){var p=(f.webkitRelativePath||f.name).split('/');var i=p.findIndex(function(x){return OBRA.test(x)});if(i<0)continue;
+ if(!/ARQUIVO BASE/i.test(p[i+1]||'')||p.length!==i+3)continue;var nome=p[i+2];if(!QUER.test(nome))continue;obras.add(p[i].toUpperCase());plano.push({obra:p[i].toUpperCase(),nome:nome,f:f})}
+$('resumo').textContent='Encontrei '+plano.length+' arquivo(s) em '+obras.size+' obra(s). Conferindo o que já está no app…';
+var chave=$('chave').value.trim();if(!chave){$('resumo').textContent+=' Cole a chave do escritório acima.';return}
+try{var ja=await run('adminListar',chave);plano=plano.filter(function(x){return !(ja[x.obra]&&ja[x.obra][x.nome]===x.f.size)});
+$('resumo').textContent='Encontrei arquivos de '+obras.size+' obra(s). Novos ou alterados: '+plano.length+'.';$('ir').disabled=!plano.length}
+catch(e){$('resumo').textContent='Erro: '+e.message}};
+function b64(f){return new Promise(function(ok,no){var r=new FileReader();r.onload=function(){ok(String(r.result).split(',')[1])};r.onerror=no;r.readAsDataURL(f)})}
+$('ir').onclick=async function(){this.disabled=true;var chave=$('chave').value.trim(),ok=0,er=0;
+for(var x of plano){try{var mime=/\.pdf$/i.test(x.nome)?'application/pdf':/\.kmz$/i.test(x.nome)?'application/vnd.google-earth.kmz':'application/octet-stream';
+ await run('adminSalvar',chave,x.obra,x.nome,await b64(x.f),mime);ok++;log('✓ '+x.obra+'  '+x.nome)}catch(e){er++;log('✗ '+x.obra+'  '+x.nome+'  ('+e.message+')')}}
+log('— fim: '+ok+' enviado(s)'+(er?', '+er+' com erro':'')+'.');$('resumo').textContent='Pronto: '+ok+' enviado(s)'+(er?', '+er+' com erro':'')+'.'};
+</script></body></html>
